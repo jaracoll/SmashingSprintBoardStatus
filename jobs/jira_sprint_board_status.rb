@@ -4,7 +4,7 @@ require 'net/http'
 require 'json'
 require 'time'
 
-JIRA_URI = URI.parse("https://jira.ttt-sp.com")
+JIRA_URI = URI.parse("jira_url")
 STORY_POINTS_CUSTOMFIELD_CODE = 'customfield_XXXXX'
 
 JIRA_AUTH = {

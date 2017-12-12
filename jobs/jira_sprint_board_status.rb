@@ -43,14 +43,6 @@ def get_active_sprint_for_view(view_id)
   end
 end
 
-# gets the remaining days for the sprint
-def get_remaining_days(view_id, sprint_id)
-  http = create_http
-  request = create_request("/rest/greenhopper/1.0/gadgets/sprints/remainingdays?rapidViewId=#{view_id}&sprintId=#{sprint_id}")
-  response = http.request(request)
-  JSON.parse(response.body)
-end
-
 # gets issues in each status
 def get_issues_per_status(view_id, sprint_id, issue_count_array, issue_sp_count_array)
   current_start_at = 0
@@ -148,19 +140,12 @@ view_mapping.each do |view, view_id|
   SCHEDULER.every '1h', :first_in => 0 do |id|
     issue_count_array = Array.new(6, 0)
     issue_sp_count_array = Array.new(6, 0)
-    view_name = ""
-    sprint_name = ""
-    days = ""
 
     view_json = get_view_for_viewid(view_id[:view_id])
     if (view_json)
-      view_name = view_json['name']
       sprint_json = get_active_sprint_for_view(view_json['id'])
       if (sprint_json)
-        sprint_name = sprint_json['name']
         get_issues_per_status(view_json['id'], sprint_json['id'], issue_count_array, issue_sp_count_array)
-        days_json = get_remaining_days(view_json['id'], sprint_json['id'])
-        days = days_json['days']
       end
     end
 

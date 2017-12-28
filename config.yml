@@ -1,0 +1,7 @@
+jira:
+  username: username
+  password: password
+  url: url
+  customfield:
+    storypoints: customfield_XXXXX
+  view: view_id

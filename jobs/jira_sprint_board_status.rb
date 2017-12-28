@@ -4,18 +4,13 @@ require 'net/http'
 require 'json'
 require 'time'
 
-JIRA_URI = URI.parse("jira_url")
-STORY_POINTS_CUSTOMFIELD_CODE = 'customfield_XXXXX'
-
-JIRA_AUTH = {
-  'name' => 'username',
-  'password' => 'password'
-}
-
-# the key of this mapping must be a unique identifier for your board, the according value must be the view id that is used in Jira
-view_mapping = {
-  'boardStatus' => { :view_id => XXXX },
-}
+# Loads configuration file
+config = YAML.load_file('config.yml')
+USERNAME = config['jira']['username']
+PASSWORD = config['jira']['password']
+JIRA_URI = config['jira']['url']
+STORY_POINTS_CUSTOMFIELD_CODE = config['jira']['customfield']['storypoints']
+VIEW_ID = config['jira']['view']
 
 # gets the view for a given view id
 def get_view_for_viewid(view_id)
@@ -63,43 +58,43 @@ end
 # accumulate issue information
 def accumulate_issue_information(issue, issue_count_array, issue_sp_count_array)
   case issue['fields']['status']['id']
-  when "1"
-    if !issue['fields']['issuetype']['subtask']
-      issue_count_array[0] = issue_count_array[0] + 1
-    end
-    if !issue['fields'][STORY_POINTS_CUSTOMFIELD_CODE].nil?
-      issue_sp_count_array[0] = issue_sp_count_array[0] + issue['fields'][STORY_POINTS_CUSTOMFIELD_CODE]
-    end
-  when "2"
-    if !issue['fields']['issuetype']['subtask']
-      issue_count_array[1] = issue_count_array[1] + 1
-    end
-    if !issue['fields'][STORY_POINTS_CUSTOMFIELD_CODE].nil?
-      issue_sp_count_array[1] = issue_sp_count_array[1] + issue['fields'][STORY_POINTS_CUSTOMFIELD_CODE]
-    end
-  when "3"
-    if !issue['fields']['issuetype']['subtask']
-      issue_count_array[2] = issue_count_array[2] + 1
-    end
-    if !issue['fields'][STORY_POINTS_CUSTOMFIELD_CODE].nil?
-      issue_sp_count_array[2] = issue_sp_count_array[2] + issue['fields'][STORY_POINTS_CUSTOMFIELD_CODE]
-    end
-  when "4"
-    if !issue['fields']['issuetype']['subtask']
-      issue_count_array[3] = issue_count_array[3] + 1
-    end
-    if !issue['fields'][STORY_POINTS_CUSTOMFIELD_CODE].nil?
-      issue_sp_count_array[3] = issue_sp_count_array[3] + issue['fields'][STORY_POINTS_CUSTOMFIELD_CODE]
-    end
-  when "5"
-    if !issue['fields']['issuetype']['subtask']
-      issue_count_array[4] = issue_count_array[4] + 1
-    end
-    if !issue['fields'][STORY_POINTS_CUSTOMFIELD_CODE].nil?
-      issue_sp_count_array[4] = issue_sp_count_array[4] + issue['fields'][STORY_POINTS_CUSTOMFIELD_CODE]
-    end
-  else
-    puts "ERROR: wrong issue status"
+    when "1"
+      if !issue['fields']['issuetype']['subtask']
+        issue_count_array[0] = issue_count_array[0] + 1
+      end
+      if !issue['fields'][STORY_POINTS_CUSTOMFIELD_CODE].nil?
+        issue_sp_count_array[0] = issue_sp_count_array[0] + issue['fields'][STORY_POINTS_CUSTOMFIELD_CODE]
+      end
+    when "2"
+      if !issue['fields']['issuetype']['subtask']
+        issue_count_array[1] = issue_count_array[1] + 1
+      end
+      if !issue['fields'][STORY_POINTS_CUSTOMFIELD_CODE].nil?
+        issue_sp_count_array[1] = issue_sp_count_array[1] + issue['fields'][STORY_POINTS_CUSTOMFIELD_CODE]
+      end
+    when "3"
+      if !issue['fields']['issuetype']['subtask']
+        issue_count_array[2] = issue_count_array[2] + 1
+      end
+      if !issue['fields'][STORY_POINTS_CUSTOMFIELD_CODE].nil?
+        issue_sp_count_array[2] = issue_sp_count_array[2] + issue['fields'][STORY_POINTS_CUSTOMFIELD_CODE]
+      end
+    when "4"
+      if !issue['fields']['issuetype']['subtask']
+        issue_count_array[3] = issue_count_array[3] + 1
+      end
+      if !issue['fields'][STORY_POINTS_CUSTOMFIELD_CODE].nil?
+        issue_sp_count_array[3] = issue_sp_count_array[3] + issue['fields'][STORY_POINTS_CUSTOMFIELD_CODE]
+      end
+    when "5"
+      if !issue['fields']['issuetype']['subtask']
+        issue_count_array[4] = issue_count_array[4] + 1
+      end
+      if !issue['fields'][STORY_POINTS_CUSTOMFIELD_CODE].nil?
+        issue_sp_count_array[4] = issue_sp_count_array[4] + issue['fields'][STORY_POINTS_CUSTOMFIELD_CODE]
+      end
+    else
+      puts "ERROR: wrong issue status"
   end
 
   issue_count_array[5] = issue_count_array[5] + 1
@@ -121,8 +116,8 @@ end
 # create HTTP request for given path
 def create_request(path)
   request = Net::HTTP::Get.new(JIRA_URI.path + path)
-  if JIRA_AUTH['name']
-    request.basic_auth(JIRA_AUTH['name'], JIRA_AUTH['password'])
+  if USERNAME
+    request.basic_auth(USERNAME, PASSWORD)
   end
   return request
 end
@@ -136,20 +131,19 @@ def get_response(path)
   return response
 end
 
-view_mapping.each do |view, view_id|
-  SCHEDULER.every '1h', :first_in => 0 do |id|
-    issue_count_array = Array.new(6, 0)
-    issue_sp_count_array = Array.new(6, 0)
+SCHEDULER.every '1h', :first_in => 0 do
+  issue_count_array = Array.new(6, 0)
+  issue_sp_count_array = Array.new(6, 0)
 
-    view_json = get_view_for_viewid(view_id[:view_id])
-    if (view_json)
-      sprint_json = get_active_sprint_for_view(view_json['id'])
-      if (sprint_json)
-        get_issues_per_status(view_json['id'], sprint_json['id'], issue_count_array, issue_sp_count_array)
-      end
+  view_json = get_view_for_viewid(VIEW_ID)
+  if (view_json)
+    sprint_json = get_active_sprint_for_view(view_json['id'])
+    if (sprint_json)
+      get_issues_per_status(view_json['id'], sprint_json['id'], issue_count_array, issue_sp_count_array)
     end
+  end
 
-    send_event(view, {
+  send_event('boardStatus', {
       toDoCount: issue_count_array[0],
       inProgressCount: issue_count_array[1],
       inReviewCount: issue_count_array[2],
@@ -161,7 +155,6 @@ view_mapping.each do |view, view_id|
       inReviewPercent: issue_sp_count_array[2],
       inTestPercent: issue_sp_count_array[3],
       donePercent: issue_sp_count_array[4],
-    })
-  end
+  })
 end
 
